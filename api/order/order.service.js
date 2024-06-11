@@ -14,7 +14,7 @@ export const orderService = {
     removeOrderMsg
 }
 
-const collectionName = 'order'
+const collectionName = 'Order'
 const PAGE_SIZE = 4
 
 async function query(filterBy = {}) {

@@ -4,17 +4,15 @@ import { socketService } from '../../services/socket.service.js'
 
 export async function getStays(req, res) {
     try {
-        logger.debug('Getting Stays:', req.query)
-        const filterBy = {
-            //txt: req.query.txt || '',
-            //minSpeed: +req.query.minSpeed || 0,
-            pageIdx: req.query.pageIdx || undefined
-        }
-        const stays = await stayService.query(filterBy)
-        res.json(stays)
+        logger.debug('Getting Stays:', req.query);
+        const filterBy = {};
+        logger.debug('FilterBy:', filterBy);
+        const stays = await stayService.query(filterBy);
+        res.json(stays);
+        
     } catch (err) {
-        logger.error('Failed to get stays', err)
-        res.status(400).send({ err: 'Failed to get stays' })
+        logger.error('Failed to get stays', err);
+        res.status(400).send({ err: 'Failed to get stays' });
     }
 }
 
