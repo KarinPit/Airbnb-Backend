@@ -15,9 +15,10 @@ export const orderService = {
 window.cs = orderService
 
 
-async function query(filterBy = { txt: '', price: 0 }) {
-    return httpService.get('order', filterBy)
+async function query(filterBy) {
+    return httpService.get('order', { params: filterBy });
 }
+
 function getById(orderId) {
     return httpService.get(`order/${orderId}`)
 }

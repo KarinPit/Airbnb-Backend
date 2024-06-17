@@ -7,6 +7,7 @@ import { log } from '../../middlewares/logger.middleware.js';
 
 export const stayService = {
     query,
+    queryAndUpdate,
     getById,
     remove,
     add,
@@ -44,52 +45,81 @@ async function query(filterBy = {}) {
     try {
         const criteria = buildCriteria(filterBy);
         const collection = await dbService.getCollection(collectionName);
+        const stayCursor = await collection.find(criteria)
 
-        const pipeline = [
-            { $match: criteria },
-            { $unwind: '$reviews' },
-            {
-                $addFields: {
-                    'reviews.moreRate.avg': {
-                        $avg: [
-                            '$reviews.moreRate.cleanliness',
-                            '$reviews.moreRate.accuracy',
-                            '$reviews.moreRate.communication',
-                            '$reviews.moreRate.location',
-                            '$reviews.moreRate.checkIn',
-                            '$reviews.moreRate.value'
-                        ]
-                    }
-                }
-            },
-            {
-                $group: {
-                    _id: '$_id',
-                    doc: { $first: '$$ROOT' },
-                    avgRating: { $avg: '$reviews.moreRate.avg' }
-                }
-            },
-            {
-                $replaceRoot: {
-                    newRoot: {
-                        $mergeObjects: ['$doc', { avgRating: '$avgRating' }]
-                    }
-                }
-            },
-            { $sort: { avgRating: -1, price: -1 } },  // Sort by avgRating and then by price
-            { $skip: filterBy.pageIdx ? filterBy.pageIdx * PAGE_SIZE : 0 },
-            { $limit: PAGE_SIZE }
-        ];
+        if (filterBy.pageIdx !== undefined) {
+            const startIdx = filterBy.pageIdx * PAGE_SIZE
+            stayCursor.skip(startIdx).limit(PAGE_SIZE)
+        }
 
-        const stays = await collection.aggregate(pipeline).toArray();
-        console.log('Criteria:', JSON.stringify(criteria, null, 2));
+        stayCursor.sort({avgRating: -1})
+        const stays = stayCursor.toArray()
+        return stays
 
-        return stays;
     } catch (err) {
         logger.error('Error querying stays:', err);
         throw err;
     }
 }
+
+
+    async function queryAndUpdate(filterBy = {}) {
+        try {
+            const criteria = buildCriteria(filterBy);
+            const collection = await dbService.getCollection(collectionName);
+    
+            const pipeline = [
+                { $match: criteria },
+                { $unwind: '$reviews' },
+                {
+                    $addFields: {
+                        'reviews.moreRate.avg': {
+                            $avg: [
+                                '$reviews.moreRate.cleanliness',
+                                '$reviews.moreRate.accuracy',
+                                '$reviews.moreRate.communication',
+                                '$reviews.moreRate.location',
+                                '$reviews.moreRate.checkIn',
+                                '$reviews.moreRate.value'
+                            ]
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$_id',
+                        doc: { $first: '$$ROOT' },
+                        avgRating: { $avg: '$reviews.moreRate.avg' }
+                    }
+                },
+                {
+                    $replaceRoot: {
+                        newRoot: {
+                            $mergeObjects: ['$doc', { avgRating: '$avgRating' }]
+                        }
+                    }
+                },
+                { $sort: { avgRating: -1, price: -1 } },
+                { $skip: filterBy.pageIdx ? filterBy.pageIdx * PAGE_SIZE : 0 },
+                { $limit: PAGE_SIZE }
+            ];
+    
+            const stays = await collection.aggregate(pipeline).toArray();
+    
+            // Step 2: Update the DB with avgRating
+            for (const stay of stays) {
+                await collection.updateOne(
+                    { _id: stay._id },
+                    { $set: { avgRating: stay.avgRating } }
+                );
+            }
+    
+            return stays;
+        } catch (err) {
+            logger.error('Error querying stays:', err);
+            throw err;
+        }
+    }
 
 async function getById(stayId) {
     try {

@@ -7,7 +7,7 @@ export async function getStays(req, res) {
         logger.debug('Getting Stays:', req.query);
         const filterBy = {};
         logger.debug('FilterBy:', filterBy);
-        const stays = await stayService.query(filterBy);
+        const stays = await stayService.queryAndUpdate(filterBy);
         res.json(stays);
         
     } catch (err) {
@@ -22,7 +22,7 @@ export async function getStayById(req, res) {
     try {
         if (lastStayId === stayId) return res.status(400).send('Dont over do it')
         const stay = await stayService.getById(stayId)
-        res.cookie('lastStayId', stayId, { maxAge: 5 * 1000 })
+        res.cookie('lastStayId', stayId, { maxAge: 1 * 1000 })
         res.send(stay)
     } catch (err) {
         logger.error('Failed to get stay', err)

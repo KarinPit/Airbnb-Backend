@@ -2,21 +2,6 @@ import { orderService } from './order.service.js'
 import { logger } from '../../services/logger.service.js'
 import { socketService } from '../../services/socket.service.js'
 
-export async function getOrders(req, res) {
-    try {
-        logger.debug('Getting Orders:', req.query)
-        const filterBy = {
-            txt: req.query.txt || '',
-            minSpeed: +req.query.minSpeed || 0,
-            pageIdx: req.query.pageIdx || undefined
-        }
-        const orders = await orderService.query(filterBy)
-        res.json(orders)
-    } catch (err) {
-        logger.error('Failed to get orders', err)
-        res.status(400).send({ err: 'Failed to get orders' })
-    }
-}
 
 export async function getOrderById(req, res) {
     const { orderId } = req.params
@@ -31,6 +16,26 @@ export async function getOrderById(req, res) {
         res.status(400).send({ err: 'Failed to get order' })
     }
 }
+
+export async function getOrders(req, res) {
+    try {
+        logger.debug('Getting Orders:', req.query)
+        console.log(req.query);
+        const filterBy = {
+            buyerId: req.query.buyerId || '',
+            hostId: req.query.hostId || '',
+            pageIdx: req.query.pageIdx || undefined
+        }
+        const orders = await orderService.query(filterBy)
+        socketService.broadcast({ type: 'order-loaded', data: orders, userId:''})
+
+        res.json(orders)
+    } catch (err) {
+        logger.error('Failed to get orders', err)
+        res.status(400).send({ err: 'Failed to get orders' })
+    }
+}
+
 
 export async function addOrder(req, res) {
     const { loggedinUser } = req
